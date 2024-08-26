@@ -1,233 +1,331 @@
-'use client'
-import { db } from "@/firebase";
-import { useUser } from "@clerk/nextjs";
-import { Container, Box, Typography, Paper, TextField, Button, Grid, Card, CardActionArea, CardContent, DialogTitle, DialogContent, DialogContentText, DialogActions, Dialog } from "@mui/material";
-import { collection, doc, getDoc, writeBatch } from "firebase/firestore";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+//page for generating flashcards and saving them
+
+"use client";
+
+import { useEffect, useState } from 'react';
+import {
+  Container,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogActions,
+  AppBar,
+  Toolbar,
+  DialogTitle,
+  DialogContentText,
+} from '@mui/material';
+import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/nextjs';
+import { setDoc, doc, writeBatch, getDoc } from 'firebase/firestore';
+import { db } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Generate() {
-    const { isLoaded, isSignedIn, user } = useUser();
-    const [flashcards, setFlashcards] = useState([]);
-    const [flipped, setFlipped] = useState({});
-    const [text, setText] = useState('');
-    const [name, setName] = useState('');
-    const [open, setOpen] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const router = useRouter();
-    
-    const handleSubmit = async () => {
-        fetch('/api/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text }), 
-        })
-        .then((res) => res.json())
-        .then((data) => setFlashcards(data))
-        .catch((error) => {
-            console.error("Error fetching flashcards:", error);
-        });
-    };
+  const { user } = useUser();
+  const [text, setText] = useState('');
+  const [flashcards, setFlashcards] = useState([]);
+  const [setName, setSetName] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const router = useRouter();
+  const handleOpenDialog = () => setDialogOpen(true);
+  const handleCloseDialog = () => setDialogOpen(false);
 
-    const handleCardClick = (id) => {
-        setFlipped((prev) => ({
-            ...prev,
-            [id]: !prev[id],
-        }));
-    };
-
-    const handleOpen = () => {
-        setOpen(true);
-    };
-
-    const handleClose = () => {
-        setOpen(false);
-    };
-
-    const saveFlashcards = async () => {
-    if (!name.trim()) {
-        alert("Please enter a name for your flashcard set.");
-        return;
+  const handleSubmit = async () => {
+    if (!text.trim()) {
+      alert('Please enter some text to generate flashcards.');
+      return;
     }
 
-    setIsSaving(true);
     try {
-        const userDocRef = doc(collection(db, "users"), user.id);
-        const userDocSnap = await getDoc(userDocRef);
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        body: text,
+      });
 
-        const batch = writeBatch(db);
+      if (!response.ok) {
+        throw new Error('Failed to generate flashcards');
+      }
 
-        if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
-            const updatedSets = [
-                ...(userData.flashcardSets || []),
-                { name, flashcards }
-            ];
-            batch.update(userDocRef, { flashcardSets: updatedSets });
-        } else {
-            batch.set(userDocRef, { flashcardSets: [{ name, flashcards }] });
-        }
-
-        const setDocRef = doc(collection(userDocRef, "flashcardSets"), name);
-        flashcards.forEach((flashcard) => {
-            const cardDocRef = doc(setDocRef);
-            batch.set(cardDocRef, flashcard);
-        });
-
-        await batch.commit();
-
-        alert("Flashcards saved successfully!");
-        handleClose();
-        setName("");
-        router.push('/flashcards');
+      const data = await response.json();
+      setFlashcards(data);
     } catch (error) {
-        console.error("Error saving flashcards:", error);
-        alert("An error occurred while saving flashcards. Please try again.");
-    } finally {
-        setIsSaving(false);
+      console.error('Error generating flashcards:', error);
+      alert('An error occurred while generating flashcards. Please try again.');
     }
-};
+  };
 
-if(!isLoaded){
-    return <div>Generating . . . </div>
-}
+  const createUserDocument = async (userId) => {
+    const userDocRef = doc(db, 'users', userId);
+    const userDocSnap = await getDoc(userDocRef);
 
-if (!isSignedIn) {
-    return (
-      <div className="container mx-auto px-6">
-        <div className="mt-10 mb-14 flex flex-col items-center">
-          <h1 className="text-4xl font-semibold mb-8">Hold Up!</h1>
-          <div className="w-full bg-gray-100 shadow-lg rounded-xl p-8 flex flex-col items-center">
-            <p className="text-blue-600">
-              Please log in or create an account to access the flashcard generator.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-}
+    if (!userDocSnap.exists()) {
+      await setDoc(userDocRef, { flashcardSets: [] });
+    }
+  };
 
+  const saveFlashcards = async () => {
+    if (!setName.trim()) {
+      alert('Please enter a name for your flashcard set.');
+      return;
+    }
+    if (!user) {
+      alert('You must be logged in to save flashcards.');
+      return;
+    }
 
-    return (
-        <Container maxWidth="md">
-            <Box 
-            sx={{
-                mt: 4, 
-                mb: 6, 
-                display: "flex", 
-                flexDirection: 'column', 
-                alignItems: 'center',
-            }}>
-                <Typography variant="h4">Create Your Flashcards!</Typography>
-                <Paper sx={{ p: 4, width: '100%' }}>
-                    <TextField 
-                        value={text}
-                        onChange={(e) => setText(e.target.value)} 
-                        label="Enter text"
-                        fullWidth
-                        multiline
-                        rows={4}
-                        variant="outlined"
-                    />
-                    <Button
-                    variant='contained' 
-                    color='primary'
-                    onClick={handleSubmit} 
-                    fullWidth> 
-                    Generate</Button>
-                </Paper>
-            </Box>
+    const userId = user.id;
 
-            {flashcards.length > 0 && (
-                <Box sx={{ mt: 4 }}>
-                    <Typography variant="h5">Your study set:</Typography>
-                    <Grid container spacing={4}>
-                        {flashcards.map((flashcard, index) => (
-                            <Grid item xs={12} sm={6} md={4} key={index}>
-                                <Card>
-                                    <CardActionArea onClick={() => handleCardClick(index)}>
-                                        <CardContent>
-                                            <Box sx={{
-                                                perspective: '1000px', 
-                                                '& > div': {
-                                                    transition: 'transform 0.4s',
-                                                    transformStyle: 'preserve-3d',
-                                                    position: 'relative',
-                                                    width: '100%',
-                                                    height: '200px',
-                                                    boxShadow: '0 4px 8px 0 rgba(0,0,0, 0.2)',
-                                                    transform: flipped[index] ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                                                },
-                                                '& > div > div': {
-                                                    position: 'absolute',
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    backfaceVisibility: 'hidden',
-                                                    display: 'flex',
-                                                    justifyContent: 'center',
-                                                    alignItems: 'center',
-                                                    padding: 2,
-                                                    boxSizing: 'border-box'
-                                                },
-                                                '& > div > div:nth-of-type(2)': {
-                                                    transform: 'rotateY(180deg)',
-                                                }
-                                            }}>
-                                                <div>
-                                                    <div>
-                                                        <Typography variant="h5" component="div">
-                                                            {flashcard.front}
-                                                        </Typography>
-                                                    </div>
-                                                    <div>
-                                                        <Typography variant="h5" component="div">
-                                                            {flashcard.back}
-                                                        </Typography>
-                                                    </div>
-                                                </div>
-                                            </Box>
-                                        </CardContent>
-                                    </CardActionArea>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
-                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                        <Button variant='contained' color='secondary' onClick={handleOpen}>
-                            Save
-                        </Button>
-                    </Box>
-                </Box>
-            )}
+    try {
+      await createUserDocument(userId);
 
-            <Dialog open={open} onClose={handleClose}>
-                <DialogTitle>Save Flashcards</DialogTitle> 
-                <DialogContent>
-                    <DialogContentText>
-                        Enter a name for your new collection.
-                    </DialogContentText>
-                    <TextField
-                        autoFocus
-                        margin='dense'
-                        label='Collection Name' 
-                        type='text' 
-                        fullWidth
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        variant="outlined"
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleClose}>
-                        Cancel
-                    </Button>
-                    <Button onClick={saveFlashcards} disabled={isSaving}>
-                        Save
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </Container>
-    );
+      const setDocRef = doc(db, 'flashcardSets', setName);
+      await setDoc(setDocRef, { flashcards, userId });
+
+      const userDocRef = doc(db, 'users', userId);
+      const userDocSnap = await getDoc(userDocRef);
+
+      const batch = writeBatch(db);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const updatedSets = [...(userData.flashcardSets || []), { name: setName }];
+        batch.update(userDocRef, { flashcardSets: updatedSets });
+      } else {
+        batch.set(userDocRef, { flashcardSets: [{ name: setName }] });
+      }
+
+      await batch.commit();
+
+      alert('Flashcards saved successfully!');
+      handleCloseDialog();
+      router.push('/flashcards');
+      setSetName('');
+    } catch (error) {
+      console.error('Error saving flashcards:', error);
+      alert('An error occurred while saving flashcards. Please try again.');
+    }
+  };
+
+  return (
+    <Container
+      maxWidth="md"
+      disableGutters
+      sx={{
+        backgroundImage: 'url(background.jpg)', // Replace with your image path
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        minHeight: '100vh',
+        color: '#fff', // White text for dark backgrounds
+        padding: 4,
+      }}
+    >
+      <AppBar position="static" sx={{ backgroundColor: 'transparent', boxShadow: 'none' }}>
+        <Toolbar>
+          <Box sx={{ flexGrow: 1 }}>
+            <Link href="/" passHref style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Typography variant="h6">AI Flashcards</Typography>
+            </Link>
+          </Box>
+          <SignedOut>
+            <Button color="inherit" href="/sign-in">
+              Login
+            </Button>
+            <Button color="inherit" href="/sign-in">
+              Sign Up
+            </Button>
+          </SignedOut>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ my: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+        >
+          Generate Flashcards
+        </Typography>
+        <TextField
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          label="Enter text"
+          fullWidth
+          multiline
+          rows={4}
+          variant="outlined"
+          InputLabelProps={{
+            sx: {
+              fontSize: [22, "!important"],
+              fontWeight: 'bold', // Make the label bold
+              color: 'gray', // Make the label gray
+            },
+          }}
+          sx={{   
+            mb: 2, 
+            backgroundColor: '#fff', 
+            borderRadius: 1 ,
+            animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+          }}
+        />
+        <Button
+          variant="contained"
+          color="secondary" // Use the same purple color
+          onClick={handleSubmit}
+          fullWidth
+          sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+        >
+          Generate Flashcards
+        </Button>
+      </Box>
+
+      {flashcards.length > 0 && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h5" component="h2" gutterBottom
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+          >
+            Generated Flashcards
+          </Typography>
+          <Grid container spacing={2}>
+            {flashcards.map((flashcard, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Card sx={{ backgroundColor: '#fff', borderRadius: 2,
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                 }}>
+                  <CardContent>
+                    <Typography variant="h6">Front:</Typography>
+                    <Typography>{flashcard.front}</Typography>
+                    <Typography variant="h6" sx={{ mt: 2 }}>
+                      Back:
+                    </Typography>
+                    <Typography>{flashcard.back}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      )}
+
+      {flashcards.length > 0 && (
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+          <Button variant="contained" color="secondary" onClick={handleOpenDialog}>
+            Save Flashcards
+          </Button>
+        </Box>
+      )}
+
+      <Dialog open={dialogOpen} onClose={handleCloseDialog}>
+        <DialogTitle
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+        >Save Flashcard Set</DialogTitle>
+        <DialogContent>
+          <DialogContentText
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+          >Please enter a name for your flashcard set.</DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Set Name"
+            type="text"
+            fullWidth
+            value={setName}
+            onChange={(e) => setSetName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={saveFlashcards} color="secondary">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
+  );
 }
