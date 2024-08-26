@@ -31,7 +31,10 @@ Return in the following JSON format:
 `;
 
 export async function POST(req) {
-    const openai = new OpenAI()
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey:`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`,
+    });
     const data = await req.text()
   
     const completion = await openai.chat.completions.create({
@@ -39,7 +42,7 @@ export async function POST(req) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: data },
       ],
-      model: 'meta-llama/llama-3-8b-instruct:free',
+      model: "openai/gpt-3.5-turbo",
       response_format: { type: 'json_object' },
     })
   
