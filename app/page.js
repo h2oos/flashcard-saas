@@ -1,95 +1,316 @@
-import Image from "next/image";
-import styles from "@emotion/styled";
+//Home Page
+"use client";
+
+
+import React from 'react';
+import {
+  AppBar,
+  Container,
+  Typography,
+  Toolbar,
+  Grid,
+  Button,
+  Box,
+} from "@mui/material";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import Head from "next/head";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import Link from "next/link"; // Import Link component
+
 
 export default function Home() {
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleGetStarted = async () => {
+    if (user) {
+      try {
+        const response = await fetch("/api/createUserDocument/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.id }),
+        });
+
+        if (response.ok) {
+          // Redirect the user to the next screen only if the document creation or verification is successful
+          router.push("/generate");
+        } else {
+          console.error("Failed to create or verify user document");
+          alert(
+            "Failed to create or verify your account. Please try again later."
+          );
+        }
+      } catch (error) {
+        console.error("Error in handleGetStarted:", error);
+        alert("An error occurred. Please try again later.");
+      }
+    } else {
+      console.error("No user found");
+      alert("You must be logged in to proceed. Please sign in.");
+      // Optionally redirect to login
+      router.push("/sign-in");
+    }
+  };
+  const handleFlashcards = () => {
+    router.push("/flashcards");
+  };
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <Container maxWidth="100vw" disableGutters sx={{
+      backgroundImage: 'url(/background.jpg)', // Use your uploaded image path here
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      color: '#fff', // White text for dark backgrounds
+    }}>
+      <Head>
+        <title>AI Flashcards</title>
+        <meta name="description" content="Create flashcards from your text" />
+      </Head>
+
+      <AppBar position="static" sx={{ backgroundColor: 'transparent', boxShadow: 'none' }}>
+        <Toolbar>
+          <Box sx={{ flexGrow: 1 }}>
+            <Link href="/" passHref style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Typography variant="h6">
+                AI Flashcards
+              </Typography>
+            </Link>
+          </Box>
+          <Box>
+            <SignedOut>
+              <Button color="inherit" href="/sign-in">
+                Login
+              </Button>
+              <Button color="inherit" href="/sign-in">
+                Sign Up
+              </Button>
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+          </Box>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ textAlign: 'center', my: 4, py: 10 }}>
+        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 'bold', fontFamily: 'comic-sans',
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },  
+         }}>
+          Welcome to AI Flashcards
+        </Typography>
+        <Typography variant="h5" component="h2" gutterBottom sx={{ maxWidth: '600px', margin: '0 auto',
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+         }}>
+          The easiest way to create flashcards from your text.
+        </Typography>
+        {user && (
+          <Box sx={{ my: 4 }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              sx={{ mt: 2, mr: 2, 
+                animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+              
+              }}
+              onClick={handleGetStarted}
+            >
+              Generate
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              sx={{ mt: 2, color: '#fff', borderColor: '#fff',
+                animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+               }}
+              onClick={handleFlashcards}
+            >
+              Flashcards
+            </Button>
+          </Box>
+        )}
+      </Box>
+
+      {!user && (
+        <Box sx={{ py: 6, backgroundColor: 'rgba(0, 0, 0, 0.6)', textAlign: 'center' }}>
+          <Typography variant="h4" component="h2" gutterBottom
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+            Features
+          </Typography>
+          <Grid container spacing={4} justifyContent="center">
+            <Grid item xs={12} md={4}>
+              <Typography variant="h6" component="h3" gutterBottom
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+              >
+                Generative AI Flashcards
+              </Typography>
+              <Typography
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+              >
+                Automatically generate flashcards based on any topic you provide. 
+                This feature uses Llama 3.1 to understand your input and create meaningful flashcards.
+              </Typography>
+            </Grid>
 
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+            <Grid item xs={12} md={4}>
+              <Typography variant="h6" component="h3" gutterBottom
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+              >
+                Create 10 Flashcards per Topic
+              </Typography>
+              <Typography
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+              >
+                Once you provide a topic, the AI will generate 10 high-quality flashcards that you can use 
+                to study and master the subject matter more efficiently.
+              </Typography>
+            </Grid>
 
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+            <Grid item xs={12} md={4}>
+              <Typography variant="h6" component="h3" gutterBottom
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+              >
+                Powered by Llama 3.1
+              </Typography>
+              <Typography
+                  sx={{
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    '@keyframes fadeInUp': {
+                      '0%': {
+                        opacity: 0,
+                        transform: 'translateY(20px)',
+                      },
+                      '100%': {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+                  }}
+              >
+                Our system is built using the latest Llama 3.1 AI model, ensuring that the flashcards are accurate 
+                and provide detailed information for in-depth learning.
+              </Typography>
+            </Grid>
+          </Grid>
+        </Box>
+      )}
+    </Container>
   );
 }
