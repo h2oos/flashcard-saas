@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app). Need to create a .env.local file and need obtain stripe, clerk, openrouter api key to work  
+This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app). Need to obtain stripe, openrouter api key to work. If deployed, add environmental variables   
 
 ## Getting Started
 
